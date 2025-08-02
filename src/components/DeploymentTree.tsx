@@ -12,6 +12,7 @@ export interface Deployment {
   version: string;
   timestamp: string;
   status: 'active' | 'inactive';
+  deployedBy?: string; // Optional for backward compatibility
 }
 
 interface DeploymentTreeProps {
@@ -73,6 +74,11 @@ export const DeploymentTree = ({ deployments, onRollback }: DeploymentTreeProps)
             <span className="text-xs text-muted-foreground">
               {new Date(deployment.timestamp).toLocaleString()}
             </span>
+            {deployment.deployedBy && (
+              <span className="text-xs text-muted-foreground ml-2">
+                by {deployment.deployedBy}
+              </span>
+            )}
           </div>
           {deployment.status === 'inactive' && (
             <Button

@@ -1,73 +1,123 @@
-# Welcome to your Lovable project
+# Heirloom Deployment Platform
 
-## Project info
+A full-stack application for managing deployments across different environments and regions.
 
-**URL**: https://lovable.dev/projects/9521139e-7141-4a38-a6c5-b5489bf7e0a6
+## Project Structure
 
-## How can I edit this code?
+- `backend/`: Go backend API using Echo framework
+- `src/`: Frontend React application
 
-There are several ways of editing your application.
+## Backend
 
-**Use Lovable**
+The backend is a Go API built with the Echo framework that provides endpoints for managing deployments:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9521139e-7141-4a38-a6c5-b5489bf7e0a6) and start prompting.
+- `POST /release`: Deploy a new version
+- `POST /rollback`: Rollback to a previous version
+- `GET /deployments`: Get active deployments
+- `GET /history`: Get deployment history
+- `GET /all-deployments`: Get all deployments in a format compatible with the frontend
 
-Changes made via Lovable will be committed automatically to this repo.
+### Setting Up the Backend
 
-**Use your preferred IDE**
+The backend supports both PostgreSQL and SQLite databases:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+#### Using SQLite (Recommended for Testing)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+SQLite is the default database and is recommended for testing:
 
-Follow these steps:
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Run the server with SQLite:
+   ```bash
+   go run main.go --db-type=sqlite --sqlite-path=heirloom.db --init-db
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+The `--init-db` flag will initialize the database with the schema and sample data.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+#### Using PostgreSQL (For Production)
 
-# Step 3: Install the necessary dependencies.
-npm i
+For production environments, you can use PostgreSQL:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. Create a PostgreSQL database
+2. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+3. Run the server with PostgreSQL:
+   ```bash
+   go run main.go --db-type=postgres --db-host=localhost --db-port=5432 --db-user=postgres --db-pass=postgres --db-name=heirloom --init-db
+   ```
+
+## Frontend
+
+The frontend is a React application that uses the backend API to manage deployments.
+
+### Integrating the Backend with the Frontend
+
+1. The `src/api/deploymentApi.ts` file provides functions for interacting with the backend API:
+   - `fetchDeployments()`: Fetch all deployments
+   - `releaseVersion()`: Deploy a new version
+   - `rollbackDeployment()`: Rollback to a previous version
+   - `fetchDeploymentHistory()`: Get deployment history
+
+2. The `src/components/DeploymentManager.tsx` component demonstrates how to use these functions with the existing UI components.
+
+### Example Usage
+
+```tsx
+import { DeploymentManager } from "@/components/DeploymentManager";
+
+function App() {
+  return (
+    <div className="App">
+      <DeploymentManager />
+    </div>
+  );
+}
 ```
 
-**Edit a file directly in GitHub**
+## Data Format
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+The backend API returns data in the same format as the sample data used by the frontend:
 
-**Use GitHub Codespaces**
+```typescript
+interface Deployment {
+  applicationName: string;
+  environment: string;
+  region: string;
+  version: string;
+  timestamp: string;
+  status: 'active' | 'inactive';
+}
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Testing
 
-## What technologies are used for this project?
+1. Start the backend server:
+   ```bash
+   cd backend
+   go run main.go
+   ```
 
-This project is built with:
+2. Run the test script to verify the API endpoints:
+   ```bash
+   cd backend
+   ./test.sh
+   ```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+3. Start the frontend development server:
+   ```bash
+   npm run dev
+   ```
 
-## How can I deploy this project?
+4. Open the application in your browser and use the DeploymentForm to create new deployments.
 
-Simply open [Lovable](https://lovable.dev/projects/9521139e-7141-4a38-a6c5-b5489bf7e0a6) and click on Share -> Publish.
+## Notes
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- The backend supports both PostgreSQL and SQLite databases:
+  - SQLite is recommended for testing and development
+  - PostgreSQL is recommended for production environments
+- The frontend expects the backend to be running on `http://localhost:8080`. Update the `API_BASE_URL` in `src/api/deploymentApi.ts` if your backend is running on a different URL.
+- Sample data is automatically loaded when using the `--init-db` flag

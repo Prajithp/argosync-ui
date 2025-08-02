@@ -12,6 +12,7 @@ interface DeploymentFormProps {
     environment: string;
     region: string;
     version: string;
+    deployedBy: string;
   }) => void;
 }
 
@@ -21,13 +22,19 @@ export const DeploymentForm = ({ onDeploy }: DeploymentFormProps) => {
     environment: "",
     region: "",
     version: "",
+    deployedBy: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.applicationName && formData.environment && formData.region && formData.version) {
-      onDeploy(formData);
-      setFormData({ applicationName: "", environment: "", region: "", version: "" });
+      // If deployedBy is empty, use the current user or a default value
+      const deployData = {
+        ...formData,
+        deployedBy: formData.deployedBy || "system"
+      };
+      onDeploy(deployData);
+      setFormData({ applicationName: "", environment: "", region: "", version: "", deployedBy: "" });
     }
   };
 
@@ -95,6 +102,16 @@ export const DeploymentForm = ({ onDeploy }: DeploymentFormProps) => {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="deployedBy">Deployed By</Label>
+            <Input
+              id="deployedBy"
+              placeholder="e.g., john.doe"
+              value={formData.deployedBy}
+              onChange={(e) => setFormData({ ...formData, deployedBy: e.target.value })}
+            />
           </div>
           
           <Button type="submit" className="w-full">
