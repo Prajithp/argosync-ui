@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { DeploymentForm } from "@/components/DeploymentForm";
 import { DeploymentTree, Deployment } from "@/components/DeploymentTree";
 import { sampleDeployments } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
@@ -12,33 +11,6 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleDeploy = (newDeployment: Omit<Deployment, 'timestamp' | 'status'>) => {
-    // Mark previous versions of the same app/env/region as inactive
-    const updatedDeployments = deployments.map(deployment => {
-      if (
-        deployment.applicationName === newDeployment.applicationName &&
-        deployment.environment === newDeployment.environment &&
-        deployment.region === newDeployment.region
-      ) {
-        return { ...deployment, status: 'inactive' as const };
-      }
-      return deployment;
-    });
-
-    // Add new deployment
-    const deployment: Deployment = {
-      ...newDeployment,
-      timestamp: new Date().toISOString(),
-      status: 'active'
-    };
-
-    setDeployments([...updatedDeployments, deployment]);
-    
-    toast({
-      title: "Deployment Successful",
-      description: `${newDeployment.applicationName} ${newDeployment.version} deployed to ${newDeployment.environment} in ${newDeployment.region}`,
-    });
-  };
 
   const handleRollback = (deployment: Deployment) => {
     // Mark current active deployment as inactive and this one as active
@@ -126,20 +98,10 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* Deployment Form */}
-          <div className="xl:col-span-1">
-            <DeploymentForm onDeploy={handleDeploy} />
-          </div>
-          
-          {/* Deployment Tree */}
-          <div className="xl:col-span-2">
-            <DeploymentTree 
-              deployments={deployments} 
-              onRollback={handleRollback}
-            />
-          </div>
-        </div>
+        <DeploymentTree 
+          deployments={deployments} 
+          onRollback={handleRollback}
+        />
       </main>
     </div>
   );
