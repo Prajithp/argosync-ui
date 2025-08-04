@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Settings, RefreshCw, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { rollbackDeployment } from "@/api/deploymentApi";
 import { DeploymentForm } from "@/components/DeploymentForm";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
@@ -16,16 +15,13 @@ const Index = () => {
   const handleRollback = async (deployment: Deployment) => {
     try {
       setIsLoading(true);
-      await rollbackDeployment(
-        deployment.applicationName,
-        deployment.environment,
-        deployment.region,
-        deployment.version
-      );
+      
+      // Simulate rollback process with sample data
+      await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate API delay
       
       toast({
         title: "Rollback Successful",
-        description: `Rolled back ${deployment.applicationName} to previous version in ${deployment.environment}`,
+        description: `Rolled back ${deployment.applicationName} to version ${deployment.version} in ${deployment.environment}`,
       });
     } catch (err) {
       toast({
@@ -48,20 +44,8 @@ const Index = () => {
     try {
       setIsLoading(true);
       
-      // Call the API to release a new version
-      await fetch(`/api/v1/release`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          application: formData.applicationName,
-          environment: formData.environment,
-          region: formData.region,
-          version: formData.version,
-          deployed_by: "user@example.com",
-        }),
-      });
+      // Simulate deployment process with sample data
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
       
       toast({
         title: "Deployment Successful",

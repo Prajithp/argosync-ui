@@ -14,31 +14,43 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
-  Application, 
-  Region, 
-  Environment, 
-  Version,
-  fetchAllApplications,
-  fetchRegionsForApplication,
-  fetchEnvironmentsForApplicationAndRegion,
-  fetchVersionsForApplicationEnvironmentRegion
-} from "@/api/deploymentApi";
+import {
+  applications,
+  regions,
+  environments,
+  optimizedDeployments,
+  getApplicationById,
+  getEnvironmentById,
+  getRegionById,
+  getDeploymentHistory,
+  type Application,
+  type Region,
+  type Environment,
+  type OptimizedDeployment
+} from "@/data/optimizedSampleData";
 import { Deployment } from "@/components/DeploymentTree";
 
 interface HierarchicalDeploymentTreeProps {
   onRollback: (deployment: Deployment) => void;
 }
 
+interface Version {
+  id: number;
+  version: string;
+  status: 'active' | 'inactive';
+  deployedAt: string;
+  deployedBy: string;
+}
+
 export const HierarchicalDeploymentTree = ({ onRollback }: HierarchicalDeploymentTreeProps) => {
   // State for hierarchical data
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [appData] = useState<Application[]>(applications);
   const [regionsMap, setRegionsMap] = useState<Record<number, Region[]>>({});
   const [environmentsMap, setEnvironmentsMap] = useState<Record<string, Environment[]>>({});
   const [versionsMap, setVersionsMap] = useState<Record<string, Version[]>>({});
   
-  // Loading states
-  const [isLoadingApps, setIsLoadingApps] = useState(true);
+  // Loading states - simplified for sample data
+  const [isLoadingApps] = useState(false);
   const [loadingRegionsFor, setLoadingRegionsFor] = useState<number | null>(null);
   const [loadingEnvironmentsFor, setLoadingEnvironmentsFor] = useState<string | null>(null);
   const [loadingVersionsFor, setLoadingVersionsFor] = useState<string | null>(null);
@@ -52,123 +64,70 @@ export const HierarchicalDeploymentTree = ({ onRollback }: HierarchicalDeploymen
   const [deploymentToRollback, setDeploymentToRollback] = useState<Deployment | null>(null);
   const [showRollbackConfirmation, setShowRollbackConfirmation] = useState(false);
 
-  // Load applications on component mount
+  // Load data from sample data instead of API
   useEffect(() => {
-    loadApplications();
+    // Pre-load all data for better UX since it's sample data
+    preloadSampleData();
   }, []);
 
-  const loadApplications = async () => {
-    try {
-      setIsLoadingApps(true);
-      const apps = await fetchAllApplications();
-      setApplications(apps);
-    } catch (error) {
-      console.error("Error loading applications:", error);
-    } finally {
-      setIsLoadingApps(false);
-    }
+  const preloadSampleData = () => {
+    // Pre-populate regions for each application
+    const newRegionsMap: Record<number, Region[]> = {};
+    applications.forEach(app => {
+      // Get regions that have deployments for this app
+      const appRegionIds = optimizedDeployments
+        .filter(d => d.applicationId === app.id)
+        .map(d => d.regionId);
+      const uniqueRegionIds = [...new Set(appRegionIds)];
+      newRegionsMap[app.id] = regions.filter(r => uniqueRegionIds.includes(r.id));
+    });
+    setRegionsMap(newRegionsMap);
   };
 
-  const toggleApplication = async (appId: number) => {
-    // Validate appId
-    if (appId === undefined || appId === null || isNaN(appId)) {
-      console.error("Invalid application ID:", appId);
-      return;
-    }
-    
-    // Toggle expanded state
+  const toggleApplication = (appId: number) => {
     const newExpandedApps = new Set(expandedApps);
     if (newExpandedApps.has(appId)) {
       newExpandedApps.delete(appId);
     } else {
       newExpandedApps.add(appId);
-      // Load regions if not already loaded
-      if (!regionsMap[appId]) {
-        try {
-          await loadRegionsForApplication(appId);
-        } catch (error) {
-          console.error(`Error loading regions for application ${appId}:`, error);
-        }
-      }
     }
     setExpandedApps(newExpandedApps);
   };
 
-  const loadRegionsForApplication = async (appId: number) => {
-    try {
-      setLoadingRegionsFor(appId);
-      const regions = await fetchRegionsForApplication(appId);
-      setRegionsMap(prev => ({
-        ...prev,
-        [appId]: regions
-      }));
-    } catch (error) {
-      console.error(`Error loading regions for application ${appId}:`, error);
-    } finally {
-      setLoadingRegionsFor(null);
-    }
-  };
-
-  const toggleRegion = async (appId: number, regionId: number) => {
-    // Validate IDs
-    if (appId === undefined || appId === null || isNaN(appId)) {
-      console.error("Invalid application ID:", appId);
-      return;
-    }
-    if (regionId === undefined || regionId === null || isNaN(regionId)) {
-      console.error("Invalid region ID:", regionId);
-      return;
-    }
-    
+  const toggleRegion = (appId: number, regionId: number) => {
     const key = `${appId}-${regionId}`;
     const newExpandedRegions = new Set(expandedRegions);
     if (newExpandedRegions.has(key)) {
       newExpandedRegions.delete(key);
     } else {
       newExpandedRegions.add(key);
-      // Load environments if not already loaded
+      // Load environments for this app-region combination
       if (!environmentsMap[key]) {
-        try {
-          await loadEnvironmentsForApplicationAndRegion(appId, regionId);
-        } catch (error) {
-          console.error(`Error loading environments for app ${appId} and region ${regionId}:`, error);
-        }
+        loadEnvironmentsForAppAndRegion(appId, regionId);
       }
     }
     setExpandedRegions(newExpandedRegions);
   };
 
-  const loadEnvironmentsForApplicationAndRegion = async (appId: number, regionId: number) => {
+  const loadEnvironmentsForAppAndRegion = (appId: number, regionId: number) => {
     const key = `${appId}-${regionId}`;
-    try {
-      setLoadingEnvironmentsFor(key);
-      const environments = await fetchEnvironmentsForApplicationAndRegion(appId, regionId);
-      setEnvironmentsMap(prev => ({
-        ...prev,
-        [key]: environments
-      }));
-    } catch (error) {
-      console.error(`Error loading environments for app ${appId} and region ${regionId}:`, error);
-    } finally {
-      setLoadingEnvironmentsFor(null);
-    }
+    setLoadingEnvironmentsFor(key);
+    
+    // Get environments that have deployments for this app-region combination
+    const appEnvIds = optimizedDeployments
+      .filter(d => d.applicationId === appId && d.regionId === regionId)
+      .map(d => d.environmentId);
+    const uniqueEnvIds = [...new Set(appEnvIds)];
+    const envs = environments.filter(e => uniqueEnvIds.includes(e.id));
+    
+    setEnvironmentsMap(prev => ({
+      ...prev,
+      [key]: envs
+    }));
+    setLoadingEnvironmentsFor(null);
   };
 
-  const toggleEnvironment = async (appId: number, regionId: number, envId: number) => {
-    // Validate IDs
-    if (appId === undefined || appId === null || isNaN(appId)) {
-      console.error("Invalid application ID:", appId);
-      return;
-    }
-    if (regionId === undefined || regionId === null || isNaN(regionId)) {
-      console.error("Invalid region ID:", regionId);
-      return;
-    }
-    if (envId === undefined || envId === null || isNaN(envId)) {
-      console.error("Invalid environment ID:", envId);
-      return;
-    }
-    
+  const toggleEnvironment = (appId: number, regionId: number, envId: number) => {
     const key = `${appId}-${regionId}-${envId}`;
     const newExpandedEnvironments = new Set(expandedEnvironments);
     if (newExpandedEnvironments.has(key)) {
@@ -177,30 +136,33 @@ export const HierarchicalDeploymentTree = ({ onRollback }: HierarchicalDeploymen
       newExpandedEnvironments.add(key);
       // Load versions if not already loaded
       if (!versionsMap[key]) {
-        try {
-          await loadVersionsForApplicationEnvironmentRegion(appId, envId, regionId);
-        } catch (error) {
-          console.error(`Error loading versions for app ${appId}, env ${envId}, and region ${regionId}:`, error);
-        }
+        loadVersionsForAppEnvRegion(appId, envId, regionId);
       }
     }
     setExpandedEnvironments(newExpandedEnvironments);
   };
 
-  const loadVersionsForApplicationEnvironmentRegion = async (appId: number, envId: number, regionId: number) => {
+  const loadVersionsForAppEnvRegion = (appId: number, envId: number, regionId: number) => {
     const key = `${appId}-${regionId}-${envId}`;
-    try {
-      setLoadingVersionsFor(key);
-      const versions = await fetchVersionsForApplicationEnvironmentRegion(appId, envId, regionId);
-      setVersionsMap(prev => ({
-        ...prev,
-        [key]: versions
+    setLoadingVersionsFor(key);
+    
+    // Get deployment history for this specific combination
+    const deploymentHistory = getDeploymentHistory(appId, envId, regionId);
+    const versions: Version[] = deploymentHistory
+      .filter(deployment => deployment.status !== 'failed') // Filter out failed deployments
+      .map(deployment => ({
+        id: deployment.id,
+        version: deployment.version,
+        status: deployment.status as 'active' | 'inactive',
+        deployedAt: deployment.deployedAt,
+        deployedBy: deployment.deployedBy
       }));
-    } catch (error) {
-      console.error(`Error loading versions for app ${appId}, env ${envId}, and region ${regionId}:`, error);
-    } finally {
-      setLoadingVersionsFor(null);
-    }
+    
+    setVersionsMap(prev => ({
+      ...prev,
+      [key]: versions
+    }));
+    setLoadingVersionsFor(null);
   };
 
   const handleConfirmRollback = () => {
@@ -228,9 +190,9 @@ export const HierarchicalDeploymentTree = ({ onRollback }: HierarchicalDeploymen
       environment: envName,
       region: regionName,
       version: version.version,
-      timestamp: version.created_at || version.CreatedAt,
-      status: 'inactive', // Assuming all versions in history are inactive except the current one
-      deployedBy: 'unknown' // This information might not be available
+      timestamp: version.deployedAt,
+      status: version.status,
+      deployedBy: version.deployedBy
     };
   };
 
@@ -245,26 +207,31 @@ export const HierarchicalDeploymentTree = ({ onRollback }: HierarchicalDeploymen
   ) => {
     return versions
       .sort((a, b) => {
-        const bDate = new Date(b.created_at || b.CreatedAt).getTime();
-        const aDate = new Date(a.created_at || a.CreatedAt).getTime();
+        const bDate = new Date(b.deployedAt).getTime();
+        const aDate = new Date(a.deployedAt).getTime();
         return bDate - aDate;
       })
       .map((version) => {
-        const isActive = (version.status || version.Status) === 'active';
+        const isActive = version.status === 'active';
         return (
           <div
-            key={`version-${version.id || version.ID}`}
-            className="ml-8 flex items-center justify-between p-2 border rounded-md bg-card hover:bg-accent/50 transition-colors"
+            key={`version-${version.id}`}
+            className="ml-8 flex items-center justify-between p-3 border rounded-lg bg-card hover:bg-accent/50 transition-all duration-200 shadow-sm"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Package className="h-4 w-4 text-muted-foreground" />
-              <span className="font-mono text-sm">{version.version}</span>
-              <Badge variant={isActive ? 'default' : 'secondary'}>
+              <span className="font-mono text-sm font-medium">{version.version}</span>
+              <Badge variant={isActive ? 'default' : 'secondary'} className="font-medium">
                 {isActive ? 'active' : 'inactive'}
               </Badge>
-              <span className="text-xs text-muted-foreground">
-                {new Date(version.created_at || version.CreatedAt).toLocaleString()}
-              </span>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">
+                  {new Date(version.deployedAt).toLocaleString()}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  by {version.deployedBy}
+                </span>
+              </div>
             </div>
             {!isActive && (
               <Button
@@ -294,22 +261,22 @@ export const HierarchicalDeploymentTree = ({ onRollback }: HierarchicalDeploymen
     regionName: string
   ) => {
     return environments.map(env => {
-      const key = `${appId}-${regionId}-${env.id || env.ID}`;
+      const key = `${appId}-${regionId}-${env.id}`;
       const isExpanded = expandedEnvironments.has(key);
       const isLoading = loadingVersionsFor === key;
       const versions = versionsMap[key] || [];
       
       return (
-        <div key={`env-${env.id || env.ID}`} className="ml-6">
+        <div key={`env-${env.id}`} className="ml-6">
           <div
-            className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent/50 rounded-md transition-colors"
-            onClick={() => toggleEnvironment(appId, regionId, env.id || env.ID)}
+            className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50 rounded-lg transition-all duration-200"
+            onClick={() => toggleEnvironment(appId, regionId, env.id)}
           >
             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <Layers className="h-4 w-4 text-accent" />
             <span className="font-medium capitalize">{env.name}</span>
             {isLoading ? (
-              <Badge variant="outline">Loading...</Badge>
+              <Badge variant="outline" className="animate-pulse">Loading...</Badge>
             ) : (
               versions.length > 0 && <Badge variant="outline">{versions.length} versions</Badge>
             )}
@@ -323,22 +290,23 @@ export const HierarchicalDeploymentTree = ({ onRollback }: HierarchicalDeploymen
 
   const renderRegions = (regions: Region[], appId: number, appName: string) => {
     return regions.map(region => {
-      const key = `${appId}-${region.id || region.ID}`;
+      const key = `${appId}-${region.id}`;
       const isExpanded = expandedRegions.has(key);
       const isLoading = loadingEnvironmentsFor === key;
       const environments = environmentsMap[key] || [];
       
       return (
-        <div key={`region-${region.id || region.ID}`} className="ml-4">
+        <div key={`region-${region.id}`} className="ml-4">
           <div
-            className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent/50 rounded-md transition-colors"
-            onClick={() => toggleRegion(appId, region.id || region.ID)}
+            className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50 rounded-lg transition-all duration-200"
+            onClick={() => toggleRegion(appId, region.id)}
           >
             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <Globe className="h-4 w-4 text-primary" />
-            <span className="font-medium">{region.name} ({region.code})</span>
+            <span className="font-medium">{region.name}</span>
+            <Badge variant="outline" className="text-xs">{region.code}</Badge>
             {isLoading ? (
-              <Badge variant="secondary">Loading...</Badge>
+              <Badge variant="secondary" className="animate-pulse">Loading...</Badge>
             ) : (
               environments.length > 0 && 
               <Badge variant="secondary">{environments.length} environments</Badge>
@@ -389,34 +357,42 @@ export const HierarchicalDeploymentTree = ({ onRollback }: HierarchicalDeploymen
           <div className="text-center py-8 text-muted-foreground">
             Loading applications...
           </div>
-        ) : applications.length === 0 ? (
+        ) : appData.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             No applications found. Deploy an application to see it here.
           </div>
         ) : (
-          <div className="space-y-2">
-            {applications.map(app => {
-              const appId = app.id || app.ID;
+          <div className="space-y-3">
+            {appData.map(app => {
+              const appId = app.id;
               const isExpanded = expandedApps.has(appId);
               const isLoading = loadingRegionsFor === appId;
-              const regions = regionsMap[appId] || [];
+              const appRegions = regionsMap[appId] || [];
               
               return (
-                <div key={`app-${app.id || app.ID}`} className="border rounded-lg p-2">
+                <div key={`app-${app.id}`} className="border rounded-xl p-4 bg-gradient-to-r from-card to-card/50 shadow-sm hover:shadow-md transition-all duration-200">
                   <div
-                    className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent/50 rounded-md transition-colors"
-                    onClick={() => toggleApplication(app.id || app.ID)}
+                    className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/30 rounded-lg transition-all duration-200"
+                    onClick={() => toggleApplication(app.id)}
                   >
-                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    <Server className="h-5 w-5 text-success" />
-                    <span className="font-semibold text-lg">{app.name}</span>
+                    {isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                    <Server className="h-6 w-6 text-primary" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <span className="font-semibold text-lg">{app.name}</span>
+                        <Badge variant="outline" className="text-xs">{app.team}</Badge>
+                      </div>
+                      {app.description && (
+                        <p className="text-sm text-muted-foreground mt-1">{app.description}</p>
+                      )}
+                    </div>
                     {isLoading ? (
-                      <Badge>Loading...</Badge>
+                      <Badge className="animate-pulse">Loading...</Badge>
                     ) : (
-                      regions.length > 0 && <Badge>{regions.length} regions</Badge>
+                      appRegions.length > 0 && <Badge>{appRegions.length} regions</Badge>
                     )}
                   </div>
-                  {isExpanded && regions.length > 0 && renderRegions(regions, app.id || app.ID, app.name)}
+                  {isExpanded && appRegions.length > 0 && renderRegions(appRegions, app.id, app.name)}
                 </div>
               );
             })}
