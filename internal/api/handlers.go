@@ -105,22 +105,128 @@ func (h *Handler) GetActiveDeployments(c echo.Context) error {
 
 // GetAllDeployments handles the get all deployments endpoint for the frontend
 func (h *Handler) GetAllDeployments(c echo.Context) error {
-	// Get limit parameter from query, default to 10 if not provided
-	limitStr := c.QueryParam("limit")
-	limit := 10 // Default limit
-	if limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-			limit = parsedLimit
+	// Get page parameter from query, default to 1 if not provided
+	pageStr := c.QueryParam("page")
+	page := 1 // Default page
+	if pageStr != "" {
+		if parsedPage, err := strconv.Atoi(pageStr); err == nil && parsedPage > 0 {
+			page = parsedPage
 		}
 	}
 
-	// Get all deployments
-	deployments, err := h.Service.GetAllDeployments(limit)
+	// Get page size parameter from query, default to 10 if not provided
+	pageSizeStr := c.QueryParam("pageSize")
+	pageSize := 10 // Default page size
+	if pageSizeStr != "" {
+		if parsedPageSize, err := strconv.Atoi(pageSizeStr); err == nil && parsedPageSize > 0 {
+			pageSize = parsedPageSize
+		}
+	}
+
+	// Get all deployments with pagination
+	deployments, totalCount, err := h.Service.GetAllDeployments(page, pageSize)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, deployments)
+	// Create response with pagination metadata
+	response := map[string]interface{}{
+		"deployments": deployments,
+		"pagination": map[string]interface{}{
+			"page":       page,
+			"pageSize":   pageSize,
+			"totalCount": totalCount,
+			"totalPages": (totalCount + pageSize - 1) / pageSize, // Ceiling division
+		},
+	}
+
+	return c.JSON(http.StatusOK, response)
+}
+
+// GetAllApplications handles the get all applications endpoint
+func (h *Handler) GetAllApplications(c echo.Context) error {
+	// Get all applications
+	applications, err := h.Service.GetAllApplications()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, applications)
+}
+
+// GetRegionsForApplication handles the get regions for application endpoint
+func (h *Handler) GetRegionsForApplication(c echo.Context) error {
+	// Get application ID from path parameter
+	appIDStr := c.Param("appID")
+	appID, err := strconv.ParseUint(appIDStr, 10, 32)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid application ID")
+	}
+
+	// Get regions for application
+	regions, err := h.Service.GetRegionsForApplication(uint(appID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, regions)
+}
+
+// GetEnvironmentsForApplicationAndRegion handles the get environments for application and region endpoint
+func (h *Handler) GetEnvironmentsForApplicationAndRegion(c echo.Context) error {
+	// Get application ID from path parameter
+	appIDStr := c.Param("appID")
+	appID, err := strconv.ParseUint(appIDStr, 10, 32)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid application ID")
+	}
+
+	// Get region ID from path parameter
+	regionIDStr := c.Param("regionID")
+	regionID, err := strconv.ParseUint(regionIDStr, 10, 32)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid region ID")
+	}
+
+	// Get environments for application and region
+	environments, err := h.Service.GetEnvironmentsForApplicationAndRegion(uint(appID), uint(regionID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, environments)
+}
+
+// GetVersionsForApplicationEnvironmentRegion handles the get versions for application, environment, and region endpoint
+func (h *Handler) GetVersionsForApplicationEnvironmentRegion(c echo.Context) error {
+	// Get application ID from path parameter
+	appIDStr := c.Param("appID")
+	appID, err := strconv.ParseUint(appIDStr, 10, 32)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid application ID")
+	}
+
+	// Get environment ID from path parameter
+	envIDStr := c.Param("envID")
+	envID, err := strconv.ParseUint(envIDStr, 10, 32)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid environment ID")
+	}
+
+	// Get region ID from path parameter
+	regionIDStr := c.Param("regionID")
+	regionID, err := strconv.ParseUint(regionIDStr, 10, 32)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid region ID")
+	}
+
+	// Get versions for application, environment, and region
+	versions, err := h.Service.GetVersionsForApplicationEnvironmentRegion(uint(appID), uint(envID), uint(regionID))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, versions)
 }
 
 // GetDeploymentHistory handles the get deployment history endpoint

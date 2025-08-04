@@ -20,8 +20,14 @@ type DeploymentRepository interface {
 	GetActiveDeployment(appID, envID, regionID uint) (*models.Deployment, error)
 	CheckVersionExists(appID, envID, regionID uint, version string) (bool, error)
 	CleanupOldVersions(appID, envID, regionID uint, maxVersions int) error
-	GetAllDeployments(limit int) ([]models.FrontendDeployment, error)
+	GetAllDeployments(page, pageSize int) ([]models.FrontendDeployment, int, error)
 	GetDeploymentHistory(appID, envID, regionID uint) ([]*models.Deployment, error)
+	
+	// New hierarchical methods
+	GetAllApplications() ([]*models.Application, error)
+	GetRegionsForApplication(appID uint) ([]*models.Region, error)
+	GetEnvironmentsForApplicationAndRegion(appID, regionID uint) ([]*models.Environment, error)
+	GetVersionsForApplicationEnvironmentRegion(appID, envID, regionID uint) ([]*models.Deployment, error)
 }
 
 type EnvironmentRepository interface {

@@ -3,6 +3,8 @@ package repository
 import (
 	"fmt"
 
+	"github.com/Prajithp/argosync/internal/repository/query"
+	"github.com/Prajithp/argosync/pkg/models"
 	zerologgorm "github.com/go-mods/zerolog-gorm"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -30,5 +32,43 @@ func InitSQLiteTestDB() (Repository, error) {
 		return nil, fmt.Errorf("error migrating schema: %w", err)
 	}
 
-	return repo, nil
+	// Initialize query interfaces
+	query.SetDefault(db)
+
+	return &testRepository{repo}, nil
+}
+
+// testRepository is a wrapper around ReleaseRepository that implements the Repository interface
+type testRepository struct {
+	*ReleaseRepository
+}
+
+// GetAllDeployments implements the Repository interface with pagination
+func (r *testRepository) GetAllDeployments(page, pageSize int) ([]models.FrontendDeployment, int, error) {
+	// For testing, just return empty results
+	return []models.FrontendDeployment{}, 0, nil
+}
+
+// GetAllApplications implements the Repository interface
+func (r *testRepository) GetAllApplications() ([]*models.Application, error) {
+	// For testing, just return empty results
+	return []*models.Application{}, nil
+}
+
+// GetRegionsForApplication implements the Repository interface
+func (r *testRepository) GetRegionsForApplication(appID uint) ([]*models.Region, error) {
+	// For testing, just return empty results
+	return []*models.Region{}, nil
+}
+
+// GetEnvironmentsForApplicationAndRegion implements the Repository interface
+func (r *testRepository) GetEnvironmentsForApplicationAndRegion(appID, regionID uint) ([]*models.Environment, error) {
+	// For testing, just return empty results
+	return []*models.Environment{}, nil
+}
+
+// GetVersionsForApplicationEnvironmentRegion implements the Repository interface
+func (r *testRepository) GetVersionsForApplicationEnvironmentRegion(appID, envID, regionID uint) ([]*models.Deployment, error) {
+	// For testing, just return empty results
+	return []*models.Deployment{}, nil
 }

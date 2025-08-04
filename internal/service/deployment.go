@@ -57,9 +57,29 @@ func (s *DeploymentService) GetRegionByCode(code string) (*models.Region, error)
 	return s.repo.GetRegionByCode(code)
 }
 
-// GetAllDeployments returns all deployments in a format compatible with the frontend
-func (s *DeploymentService) GetAllDeployments(limit int) ([]models.FrontendDeployment, error) {
-	return s.repo.GetAllDeployments(limit)
+// GetAllDeployments returns all deployments in a format compatible with the frontend with pagination
+func (s *DeploymentService) GetAllDeployments(page, pageSize int) ([]models.FrontendDeployment, int, error) {
+	return s.repo.GetAllDeployments(page, pageSize)
+}
+
+// GetAllApplications returns all applications
+func (s *DeploymentService) GetAllApplications() ([]*models.Application, error) {
+	return s.repo.GetAllApplications()
+}
+
+// GetRegionsForApplication returns all regions for a specific application
+func (s *DeploymentService) GetRegionsForApplication(appID uint) ([]*models.Region, error) {
+	return s.repo.GetRegionsForApplication(appID)
+}
+
+// GetEnvironmentsForApplicationAndRegion returns all environments for a specific application and region
+func (s *DeploymentService) GetEnvironmentsForApplicationAndRegion(appID, regionID uint) ([]*models.Environment, error) {
+	return s.repo.GetEnvironmentsForApplicationAndRegion(appID, regionID)
+}
+
+// GetVersionsForApplicationEnvironmentRegion returns all versions for a specific application, environment, and region
+func (s *DeploymentService) GetVersionsForApplicationEnvironmentRegion(appID, envID, regionID uint) ([]*models.Deployment, error) {
+	return s.repo.GetVersionsForApplicationEnvironmentRegion(appID, envID, regionID)
 }
 
 // GetDeploymentHistory retrieves the deployment history for an application in a specific environment and region

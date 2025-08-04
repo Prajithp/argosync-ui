@@ -71,6 +71,12 @@ func NewServer(cfg *config.Config, handler *api.Handler) *Server {
 	apiGroup.GET("/deployments", handler.GetActiveDeployments)
 	apiGroup.GET("/history", handler.GetDeploymentHistory)
 	apiGroup.GET("/all-deployments", handler.GetAllDeployments)
+	
+	// New hierarchical data loading endpoints
+	apiGroup.GET("/applications", handler.GetAllApplications)
+	apiGroup.GET("/applications/:appID/regions", handler.GetRegionsForApplication)
+	apiGroup.GET("/applications/:appID/regions/:regionID/environments", handler.GetEnvironmentsForApplicationAndRegion)
+	apiGroup.GET("/applications/:appID/environments/:envID/regions/:regionID/versions", handler.GetVersionsForApplicationEnvironmentRegion)
 
 	return &Server{
 		echo:   e,
